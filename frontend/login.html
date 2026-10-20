@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>飞控 QMS · 登录</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-left">
+      <div class="lg">飞控 QMS</div>
+      <div class="sub">IQC · IPQC · FQC · NCR · CAPA · SPC · 供应商质量 · 集成</div>
+      <ul>
+        <li>检验全类型覆盖：来料 IQC、过程 IPQC（首件/巡检）、成品 FQC、出货 OQC</li>
+        <li>AQL 抽样引擎：ISO 2859-1 字码查表，致命缺陷 Ac=0 一票否决</li>
+        <li>不合格品闭环：NCR 五态评审处置，让步接收不良率上限拦截</li>
+        <li>8D 纠正预防：D1→D8 七道闸口，根因与围堵措施强制录入</li>
+        <li>开放接口：API Key / Webhook / 增量同步，与 ERP、MES、SRM 对接</li>
+      </ul>
+      <div class="spacer"></div>
+      <div class="sub" style="font-size:11.5px">feikong-qms v1.0.0 · 演示数据为确定性生成</div>
+    </div>
+    <div class="login-right">
+      <h2>账号登录</h2>
+      <div class="hint">请输入企业账号与密码</div>
+      <div class="field">
+        <label>账号</label>
+        <input id="u" type="text" placeholder="如 admin" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input id="p" type="password" placeholder="请输入密码" autocomplete="current-password">
+      </div>
+      <button class="btn primary" id="btn">登 录</button>
+      <div class="login-err" id="err"></div>
+      <div class="login-demo">
+        演示账号：admin / qms@2026（系统管理员）<br>
+        liming 质量经理 · wangfang 质量工程师 · zhangqiang / liuyun 检验员 · chenjing 工艺工程师 · sunwei SQE · zhouyu 只读（密码 qms@2026）
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var u = document.getElementById("u");
+  var p = document.getElementById("p");
+  var btn = document.getElementById("btn");
+  var err = document.getElementById("err");
+  if (localStorage.getItem("qms_token")) location.href = "./index.html";
+
+  function login() {
+    err.textContent = "";
+    var username = (u.value || "").trim();
+    var password = p.value || "";
+    if (!username || !password) { err.textContent = "请输入账号和密码"; return; }
+    btn.disabled = true;
+    btn.textContent = "登录中…";
+    fetch("api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: username, password: password })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (x) {
+      if (!x.ok || !x.j.token) {
+        err.textContent = (x.j && x.j.message) || "登录失败";
+        return;
+      }
+      var d = x.j;
+      localStorage.setItem("qms_token", d.token);
+      localStorage.setItem("qms_user", d.user.username);
+      localStorage.setItem("qms_name", d.user.name);
+      localStorage.setItem("qms_role", d.user.role);
+      // Cookie 兜底：部分反向代理会改写 Authorization 头
+      document.cookie = "token=" + d.token + "; path=/; max-age=86400; samesite=lax";
+      location.href = "./index.html";
+    }).catch(function () {
+      err.textContent = "网络异常，请稍后重试";
+    }).then(function () {
+      btn.disabled = false;
+      btn.textContent = "登 录";
+    });
+  }
+
+  btn.addEventListener("click", login);
+  p.addEventListener("keydown", function (e) { if (e.key === "Enter") login(); });
+  u.addEventListener("keydown", function (e) { if (e.key === "Enter") p.focus(); });
+  u.focus();
+})();
+</script>
+</body>
+</html>
